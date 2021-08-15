@@ -9,12 +9,13 @@
 
 # Exclude all contents from any keyfiles folder
 keyfiles/**
+
 # Except following example file
 !keyfiles/lorawan-keys_example.h
 
 # Exclude any LoRaWAN key files with following pattern
 *lorawan-keys.h
 
-# Exlude lib and include project folders (PlatformIO)
+# Exclude lib and include project folders (PlatformIO)
 /lib/
 /include/

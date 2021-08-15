@@ -72,7 +72,7 @@
 // Value is defined in parts per million (of MAX_CLOCK_ERROR).
 // #ifndef LMIC_CLOCK_ERROR_PPM
 //     #define LMIC_CLOCK_ERROR_PPM 0
-// #endif   
+// #endif
 
 // Pin mappings for LoRa tranceiver
 const lmic_pinmap lmic_pins = {
@@ -93,7 +93,8 @@ const lmic_pinmap lmic_pins = {
 #endif  
 
 #ifdef USE_LED
-    EasyLed led(LED_BUILTIN, EasyLed::ActiveLevel::Low);
+    //EasyLed led(LED_BUILTIN, EasyLed::ActiveLevel::Low);
+    EasyLed led(LED_BUILTIN, EasyLed::ActiveLevel::High);
 #endif
 
 #ifdef USE_DISPLAY

@@ -91,7 +91,7 @@
 // Value is defined in parts per million (of MAX_CLOCK_ERROR).
 // #ifndef LMIC_CLOCK_ERROR_PPM
 //     #define LMIC_CLOCK_ERROR_PPM 0
-// #endif   
+// #endif
 
 // Pin mappings for LoRa tranceiver
 const lmic_pinmap lmic_pins = {
