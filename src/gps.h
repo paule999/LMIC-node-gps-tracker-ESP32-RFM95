@@ -2,9 +2,6 @@
 #include <TinyGPS++.h>
 #include <HardwareSerial.h>
 
-//#define GPS_TX 34
-//#define GPS_RX 12
-
 #define GPS_TX GPS_TX_PIN
 #define GPS_RX GPS_RX_PIN
 
