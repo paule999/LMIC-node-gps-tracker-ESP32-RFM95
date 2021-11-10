@@ -17,6 +17,3 @@ Added some new variables:
 - GPS_DEVIATION To ignore small displacements, send only packages when the tracker moves.
 - GPS_TX_PIN, GPS_RX_PIN The pin numbers of  the gps module. Depends on the board type.
 - a payload formatter for version 3.
-
-Features:
-
