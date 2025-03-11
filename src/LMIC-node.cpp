@@ -58,11 +58,68 @@
 
 #include "gps.h"
 gps gps1;
+#include <driver/adc.h>
+#define REF_VCCRAW_ESP32 949 // VCCraw read from ESP32 
+#define REF_VBAT 3862 // Voltage in mV at battery
 
 double lastLat = HOME_LATITUDE;
 double lastLon = HOME_LONGITUDE;
 
-const uint8_t payloadBufferLength = 10; // Adjust to fit max payload length
+const uint8_t payloadBufferLength = 12; // Adjust to fit max payload length
+
+long ReadVBat()
+{
+  Serial.print("ReadVBat = ");
+  long vccraw = 0;
+  int read_raw;
+  int samples_ok = 0;
+  long raw = 0;
+
+  adc1_config_channel_atten(ADC1_CHANNEL_3, ADC_ATTEN_DB_11); // Use ADC_ATTEN_DB_11 for higher voltage range
+
+  for (int samples = 0; samples < 50; samples++) // Start from 0 for consistency
+  {
+    read_raw = adc1_get_raw(ADC1_CHANNEL_3);
+
+    if (read_raw >= 0)
+    {
+      samples_ok++;
+      raw += read_raw;
+    }
+    delayMicroseconds(500); // Reduce delay for faster execution
+  }
+
+  if (samples_ok > 0)
+  {
+    // Convert ADC reading to voltage in millivolts (assuming 3.9V max ADC input)
+    float vccraw_f = ((float)raw / samples_ok) * (3.9 / 4095) * 1000; 
+    float vBat_f = vccraw_f * ((float)REF_VBAT / (float)REF_VCCRAW_ESP32);
+    float vBat_o = vBat_f;
+
+    // Apply calibration formula
+    vBat_f = (0.85* vBat_f) + 637;
+
+    long vccraw = (long)vccraw_f;
+    long vBat = (long)vBat_f;
+
+    Serial.print("VCCraw: ");
+    Serial.print(vccraw);
+    Serial.print(" mV, vBat (corrected): ");
+    Serial.print(vBat_f);
+    //Serial.println(" mV, vBat (Original):");
+    //Serial.print(vBat_o);
+    //Serial.print(" mV");
+    return vBat;
+  }
+  else
+  {
+    Serial.println("No valid samples.");
+    return 0;
+  }
+}
+
+
+
 
 //  █ █ █▀▀ █▀▀ █▀▄   █▀▀ █▀█ █▀▄ █▀▀   █▀▀ █▀█ █▀▄
 //  █ █ ▀▀█ █▀▀ █▀▄   █   █ █ █ █ █▀▀   █▀▀ █ █ █ █
@@ -70,7 +127,9 @@ const uint8_t payloadBufferLength = 10; // Adjust to fit max payload length
 
 uint8_t payloadBuffer[payloadBufferLength];
 static osjob_t doWorkJob;
+static osjob_t doWorkJobLong;  // Add a second job for long intervals
 uint32_t doWorkIntervalSeconds = DO_WORK_INTERVAL_SECONDS; // Change value in platformio.ini
+uint32_t doWorkIntervalLongSeconds = DO_WORK_INTERVAL_LONG_SECONDS; // Change value in platformio.ini
 
 // Note: LoRa module pin mappings are defined in the Board Support Files.
 
@@ -472,6 +531,7 @@ void initLmic(bit_t adrEnabled = 1,
     os_init();
     // Reset MAC state
     LMIC_reset();
+    LMIC_setClockError(MAX_CLOCK_ERROR * 10 / 100);
 
 #ifdef ABP_ACTIVATION
     setAbpParameters(dataRate, txPower);
@@ -636,6 +696,30 @@ static void doWorkCallback(osjob_t *job)
     // This job must explicitly reschedule itself for the next run.
     ostime_t startAt = timestamp + sec2osticks((int64_t)doWorkIntervalSeconds);
     os_setTimedCallback(&doWorkJob, startAt, doWorkCallback);
+
+    // Reset and reschedule the long interval timer
+    os_clearCallback(&doWorkJobLong);
+    ostime_t startAtLong = timestamp + sec2osticks((int64_t)doWorkIntervalLongSeconds);
+    os_setTimedCallback(&doWorkJobLong, startAtLong, doWorkCallbackLong);
+}
+
+static void doWorkCallbackLong(osjob_t *job)
+{
+    // Event hander for doWorkJob. Gets called by the LMIC scheduler.
+    // The actual work is performed in function processWorkLong() which is called below.
+
+    ostime_t timestamp = os_getTime();
+#ifdef USE_SERIAL
+    serial.println();
+    printEvent(timestamp, "doWork long job started", PrintTarget::Serial);
+#endif
+
+    // Do the work that needs to be performed.
+    processWorkLong(timestamp);
+
+    // This job must explicitly reschedule itself for the next run.
+    ostime_t startAt = timestamp + sec2osticks((int64_t)doWorkIntervalLongSeconds);
+    os_setTimedCallback(&doWorkJobLong, startAt, doWorkCallbackLong);
 }
 
 lmic_tx_error_t scheduleUplink(uint8_t fPort, uint8_t *data, uint8_t dataLength, bool confirmed = false)
@@ -743,12 +827,17 @@ void processWork(ostime_t doWorkJobTimeStamp)
             //   b) outside "MIN_DISTANCE" (meter) from given location "HOME_LATITUDE", "HOME_LONGITUDE"
             //   c) new gps position differs more than "GPS_DEVIATION" (meter) from previous position
             // get gps data
+            
+            long vBat = ReadVBat(); // Read Battery Voltage
+            uint16_t vbatx = (vBat / 10) - 200;
+            
             if (gps1.checkGpsFix())
             {
+                led3.off();
 
 #ifdef USE_SERIAL
                 printSpaces(serial, MESSAGE_INDENT);
-                Serial.println("Valid gps Fix");
+                Serial.println("Valid gps Fix (NORMAL INTERVAL)");
                 printSpaces(serial, MESSAGE_INDENT);
                 Serial.println("Current Position:");
                 char s[32];
@@ -776,8 +865,9 @@ void processWork(ostime_t doWorkJobTimeStamp)
                 //Serial.println(lastLat, 6);
                 //Serial.print("Debug: lastLon = ");
                 //Serial.println(lastLon, 6);
-#endif
-
+#endif           
+                
+                
                 if (gps1.distanceTo(HOME_LATITUDE, HOME_LONGITUDE) >= MIN_DISTANCE)
                 {
                     if (gps1.distanceTo(lastLat, lastLon) >= GPS_DEVIATION)
@@ -788,12 +878,12 @@ void processWork(ostime_t doWorkJobTimeStamp)
                         Serial.println("Update to TTN.");
 #endif
 
-                        uint8_t txBuffer[10];
+                        uint8_t txBuffer[11];
                         gps1.buildPacket(txBuffer);
 
                         // Prepare uplink payload.
                         uint8_t fPort = 10;
-                        uint8_t payloadLength = 10;
+                        uint8_t payloadLength = 12;
 
                         payloadBuffer[0] = txBuffer[0];
                         payloadBuffer[1] = txBuffer[1];
@@ -806,7 +896,11 @@ void processWork(ostime_t doWorkJobTimeStamp)
                         payloadBuffer[8] = txBuffer[8];
                         payloadBuffer[9] = txBuffer[9];
 
+                        payloadBuffer[10] = (vbatx >> 8) & 0xFF;  // HIGH byte
+                        payloadBuffer[11] = vbatx & 0xFF;         // LOW byte
+
                         scheduleUplink(fPort, payloadBuffer, payloadLength);
+                        
                     }
                     else
                     {
@@ -831,6 +925,147 @@ void processWork(ostime_t doWorkJobTimeStamp)
 #ifdef USE_SERIAL
                 printSpaces(serial, MESSAGE_INDENT);
                 serial.println(F("No gps fix, no update to TTN."));
+                led3.flash(255,10,2000); //LED on When no GPS...
+#endif
+            }
+        }
+    }
+}
+
+// No downlink procedure implemented.
+
+void processWorkLong(ostime_t doWorkJobTimeStamp)
+{
+    // THIS FUNCTION SHOULD BE CALLED every doWorkIntervalLongSeconds!!!!!!!!!
+    // This function is called from the doWorkCallback()
+    // callback function when the doWork job is executed.
+
+    // Uses globals: payloadBuffer and LMIC data structure.
+
+    // This is where the main work is performed like
+    // reading sensor and GPS data and schedule uplink
+    // messages if anything needs to be transmitted.
+
+    // Skip processWorkLong if using OTAA and still joining.
+    if (LMIC.devaddr != 0)
+    {
+        // Collect input data.
+        ostime_t timestamp = os_getTime();
+
+#ifdef USE_DISPLAY
+        // Interval and Counter values are combined on a single row.
+        // This allows to keep the 3rd row empty which makes the
+        // information better readable on the small display.
+        display.clearLine(INTERVAL_ROW);
+        display.setCursor(COL_0, INTERVAL_ROW);
+        display.print("I:");
+        display.print(doWorkIntervalSeconds);
+        display.print("s");
+#endif
+#ifdef USE_SERIAL
+        printEvent(timestamp, "Input data collected", PrintTarget::Serial);
+        printSpaces(serial, MESSAGE_INDENT);
+        serial.println();
+#endif
+
+        // For simplicity LMIC-node will try to send an uplink
+        // message every time processWork() is executed.
+        // Schedule uplink message if possible
+        if (LMIC.opmode & OP_TXRXPEND)
+        {
+            // TxRx is currently pending, do not send.
+#ifdef USE_SERIAL
+            printEvent(timestamp, "Uplink not scheduled because TxRx pending", PrintTarget::Serial);
+#endif
+#ifdef USE_DISPLAY
+            printEvent(timestamp, "UL not scheduled", PrintTarget::Display);
+#endif
+        }
+        else
+        {
+            // Send uplink only if
+            //   a) a valid gps fix
+            //  IGNORES MIN_DISTANCE=10 & GPS_DEVIATION=10!!!!!!      
+            
+            long vBat = ReadVBat(); // Read Battery Voltage
+            uint16_t vbatx = (vBat / 10) - 200;
+            
+            if (gps1.checkGpsFix())
+            {
+                led3.off();
+
+#ifdef USE_SERIAL
+                printSpaces(serial, MESSAGE_INDENT);
+                Serial.println("Valid gps Fix (LONG INTERVAL)");
+                printSpaces(serial, MESSAGE_INDENT);
+                Serial.println("Current Position:");
+                char s[32];
+                sprintf(s, "Lat: %f", gps1.getLatitude());
+                printSpaces(serial, MESSAGE_INDENT);
+                Serial.println(s);
+                sprintf(s, "Lon: %f", gps1.getLongitude());
+                printSpaces(serial, MESSAGE_INDENT);
+                Serial.println(s);
+                printSpaces(serial, MESSAGE_INDENT);
+                Serial.print("Distance to start point = ");
+                Serial.print(gps1.distanceTo(HOME_LATITUDE, HOME_LONGITUDE));
+                Serial.print(" m. ");
+                Serial.print("Set to: ");
+                Serial.print(MIN_DISTANCE);
+                Serial.println(" m.");
+                printSpaces(serial, MESSAGE_INDENT);
+                Serial.print("Difference between last position: ");
+                Serial.print(gps1.distanceTo(lastLat, lastLon));
+                Serial.print(" m.");
+                Serial.print(" Set to: ");
+                Serial.print(GPS_DEVIATION);
+                Serial.println(" m.");
+                //Serial.print("Debug: lastLat = ");
+                //Serial.println(lastLat, 6);
+                //Serial.print("Debug: lastLon = ");
+                //Serial.println(lastLon, 6);
+#endif           
+                
+                
+                
+
+#ifdef USE_SERIAL
+                        printSpaces(serial, MESSAGE_INDENT);
+                        Serial.println("Update to TTN.");
+#endif
+
+                        uint8_t txBuffer[11];
+                        gps1.buildPacket(txBuffer);
+
+                        // Prepare uplink payload.
+                        uint8_t fPort = 10;
+                        uint8_t payloadLength = 12;
+
+                        payloadBuffer[0] = txBuffer[0];
+                        payloadBuffer[1] = txBuffer[1];
+                        payloadBuffer[2] = txBuffer[2];
+                        payloadBuffer[3] = txBuffer[3];
+                        payloadBuffer[4] = txBuffer[4];
+                        payloadBuffer[5] = txBuffer[5];
+                        payloadBuffer[6] = txBuffer[6];
+                        payloadBuffer[7] = txBuffer[7];
+                        payloadBuffer[8] = txBuffer[8];
+                        payloadBuffer[9] = txBuffer[9];
+
+                        payloadBuffer[10] = (vbatx >> 8) & 0xFF;  // HIGH byte
+                        payloadBuffer[11] = vbatx & 0xFF;         // LOW byte
+
+                        scheduleUplink(fPort, payloadBuffer, payloadLength);
+                        
+                lastLat = gps1.getLatitude();
+                lastLon = gps1.getLongitude();
+            }
+            else
+            {
+#ifdef USE_SERIAL
+                printSpaces(serial, MESSAGE_INDENT);
+                serial.println(F("No gps fix, no update to TTN."));
+                led3.flash(255,10,2000); //LED on When no GPS...
 #endif
             }
         }
@@ -871,8 +1106,11 @@ void processDownlink(ostime_t txCompleteTimestamp, uint8_t fPort, uint8_t *data,
 
 void setup()
 {
+    setCpuFrequencyMhz(20);
     // boardInit(InitType::Hardware) must be called at start of setup() before anything else.
     bool hardwareInitSucceeded = boardInit(InitType::Hardware);
+    
+    
 
 #ifdef USE_DISPLAY
     initDisplay();
@@ -883,9 +1121,12 @@ void setup()
 #endif
 
     boardInit(InitType::PostInitSerial);
+    
 
 #if defined(USE_SERIAL) || defined(USE_DISPLAY)
     printHeader();
+    serial.println(__FILE__);
+    serial.println("WROOM GPS V2");
 #endif
 
     if (!hardwareInitSucceeded)
@@ -911,20 +1152,30 @@ void setup()
     // Place code for initializing sensors etc. here.
 
     // resetCounter();
-
+    // Set Extra LEDs too OFF
+    pinMode(15, OUTPUT); //Green (led2)
+    pinMode(22, OUTPUT); //Blue (led3)
+    digitalWrite(15, LOW);
+    digitalWrite(22, LOW); 
+    
     gps1.init();
 
+    led2.flash(3, 50, 50, 50, 50); //Flash Green Led 3 times rapidly to indicate successful setup
+
+    
     //  █ █ █▀▀ █▀▀ █▀▄   █▀▀ █▀█ █▀▄ █▀▀   █▀▀ █▀█ █▀▄
     //  █ █ ▀▀█ █▀▀ █▀▄   █   █ █ █ █ █▀▀   █▀▀ █ █ █ █
     //  ▀▀▀ ▀▀▀ ▀▀▀ ▀ ▀   ▀▀▀ ▀▀▀ ▀▀  ▀▀▀   ▀▀▀ ▀ ▀ ▀▀
 
-    if (activationMode == ActivationMode::OTAA)
-    {
-        LMIC_startJoining();
-    }
+    //if (activationMode == ActivationMode::OTAA)
+    //{
+        //LMIC_startJoining();
+    //}
 
     // Schedule initial doWork job for immediate execution.
     os_setCallback(&doWorkJob, doWorkCallback);
+    os_setCallback(&doWorkJobLong, doWorkCallbackLong);
+    
 }
 
 void loop()
