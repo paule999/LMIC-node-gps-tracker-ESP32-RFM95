@@ -48,7 +48,9 @@ const s1_t DefaultABPTxPower =  14;
 
 // Forward declarations
 static void doWorkCallback(osjob_t* job);
+static void doWorkCallbackLong(osjob_t* job);
 void processWork(ostime_t timestamp);
+void processWorkLong(ostime_t timestamp);
 void processDownlink(ostime_t eventTimestamp, uint8_t fPort, uint8_t* data, uint8_t dataLength);
 void onLmicEvent(void *pUserData, ev_t ev);
 void displayTxSymbol(bool visible);
@@ -56,6 +58,9 @@ void displayTxSymbol(bool visible);
 #ifndef DO_WORK_INTERVAL_SECONDS            // Should be set in platformio.ini
     #define DO_WORK_INTERVAL_SECONDS 300    // Default 5 minutes if not set
 #endif    
+#ifndef DO_WORK_INTERVAL_LONG_SECONDS            // Should be set in platformio.ini
+    #define DO_WORK_INTERVAL_LONG_SECONDS 3600    // Default 60 minutes if not set
+#endif  
 
 #define TIMESTAMP_WIDTH 12 // Number of columns to display eventtime (zero-padded)
 #define MESSAGE_INDENT TIMESTAMP_WIDTH + 3
@@ -231,7 +236,7 @@ enum class ActivationMode {OTAA, ABP};
         if (on)
         {
             #ifdef USE_LED
-                led.on();
+                led.on(); //red
             #endif
             #ifdef USE_DISPLAY
                 displayTxSymbol(true);
