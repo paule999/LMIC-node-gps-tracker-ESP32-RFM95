@@ -1,11 +1,11 @@
 
-# LMIC-node-T-Beam-GPS
+# LMIC-node-ESP32 & RFM95-GPS
  
-This repository is a fork of [Leonel Parente's LMIC-node](https://github.com/lnlp/LMIC-node) and adds a gps functionality to the default LMIC-node
+This repository is a fork of [roelwolf/LMIC-node-gps-tracker](https://github.com/roelwolf/LMIC-node-gps-tracker) and adds a gps functionality to the default LMIC-node
 
 The code makes use of the library [mikalhart/TinyGPSPlus](https://github.com/mikalhart/TinyGPSPlus)
 
-The code is written for the [TTGO T-Beam](https://github.com/LilyGO/TTGO-T-Beam) but is easily adapted for any other board equipped with a gps module.
+The code was originally written for the [TTGO T-Beam](https://github.com/LilyGO/TTGO-T-Beam) but has been adapted for any ESP32 & RFM95 Lora Module.
 
 I changed as less as posible to the original code in ```LMIC-node.h``` and ```LMIC-node.cpp```. The additions are mainly between the lines `"USER CODE BEGIN"` and `"USER CODE END"`
 
