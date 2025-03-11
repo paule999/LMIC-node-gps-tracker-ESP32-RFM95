@@ -22,8 +22,11 @@ Added some new variables:
 - a payload formatter for version 3.
 
 Additional Features Added:
-- Battery Monitoring via ADC1_CHANNEL_3, ADC_ATTEN_DB_11 (GPIO 39) and added to the Lora Payload.
+- Battery Monitoring via ADC1_CHANNEL_3, ADC_ATTEN_DB_11 (GPIO 39) with vBatt added to the Lora Payload.
 - Dual Uplink Intervals: The device can send data at two different intervals (normal and long).Both Intervals are set via platfomio.ini
 - DO_WORK_INTERVAL_SECONDS is the normal Lora interval (triggers processWork).
 - DO_WORK_INTERVAL_LONG_SECONDS Is a longer interval triggers processWorkLong it Ignores MIN_DISTANCE & GPS_DEVIATION!!! (A heartbeat when the tracker is static for long periods)
+- Number of Satellites added to Lora Payload
+
+- ESP32 Processor speed reduced (setCpuFrequencyMhz(20);) to improve battery life of tracker.
 
