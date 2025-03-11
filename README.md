@@ -1,5 +1,5 @@
 
-# LMIC-node-ESP32 & RFM95-GPS
+# LMIC-node-ESP32 & RFM95-GPS Tracker
  
 This repository is a fork of [roelwolf/LMIC-node-gps-tracker](https://github.com/roelwolf/LMIC-node-gps-tracker) and adds a gps functionality to the default LMIC-node
 
