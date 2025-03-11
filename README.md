@@ -5,7 +5,7 @@ This repository is a fork of [roelwolf/LMIC-node-gps-tracker](https://github.com
 
 The code makes use of the library [mikalhart/TinyGPSPlus](https://github.com/mikalhart/TinyGPSPlus)
 
-The code was originally written for the [TTGO T-Beam](https://github.com/LilyGO/TTGO-T-Beam) but has been adapted for any ESP32 & RFM95 Lora Module.
+The code was originally written for the [TTGO T-Beam](https://github.com/LilyGO/TTGO-T-Beam) but has been adapted for any ESP32 & RFM95 Lora Module connected via SPI.
 
 I changed as less as posible to the original code in ```LMIC-node.h``` and ```LMIC-node.cpp```. The additions are mainly between the lines `"USER CODE BEGIN"` and `"USER CODE END"`
 
@@ -20,3 +20,8 @@ Added some new variables:
 - GPS_DEVIATION To ignore small displacements, send only packages when the tracker moves.
 - GPS_TX_PIN, GPS_RX_PIN The pin numbers of  the gps module. Depends on the board type.
 - a payload formatter for version 3.
+
+Additional Features Added:
+- Battery Monitoring via ADC1_CHANNEL_3, ADC_ATTEN_DB_11 (GPIO 39) and added to the Lora Payload.
+- Dual Uplink Intervals: The device can send data at two different intervals (normal and long).Both Intervals are set via platfomio.ini DO_WORK_INTERVAL_SECONDS & DO_WORK_INTERVAL_LONG_SECONDS the latter by default Sends an update if DO_WORK_INTERVAL_SECONDS has not been triggered for 60mins(I.E. it     Ignores MIN_DISTANCE & GPS_DEVIATION!).
+
