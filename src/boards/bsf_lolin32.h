@@ -95,7 +95,9 @@ const lmic_pinmap lmic_pins = {
 #endif   
 
 #ifdef USE_LED
-    EasyLed led(5, EasyLed::ActiveLevel::Low);
+    EasyLed led(5, EasyLed::ActiveLevel::High); //red
+    EasyLed led2(15, EasyLed::ActiveLevel::High); //green
+    EasyLed led3(22, EasyLed::ActiveLevel::High); //blue
 #endif
 
 #ifdef USE_DISPLAY
