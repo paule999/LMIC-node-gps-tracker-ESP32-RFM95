@@ -697,10 +697,6 @@ static void doWorkCallback(osjob_t *job)
     ostime_t startAt = timestamp + sec2osticks((int64_t)doWorkIntervalSeconds);
     os_setTimedCallback(&doWorkJob, startAt, doWorkCallback);
 
-    // Reset and reschedule the long interval timer
-    os_clearCallback(&doWorkJobLong);
-    ostime_t startAtLong = timestamp + sec2osticks((int64_t)doWorkIntervalLongSeconds);
-    os_setTimedCallback(&doWorkJobLong, startAtLong, doWorkCallbackLong);
 }
 
 static void doWorkCallbackLong(osjob_t *job)
@@ -900,6 +896,11 @@ void processWork(ostime_t doWorkJobTimeStamp)
                         payloadBuffer[11] = vbatx & 0xFF;         // LOW byte
 
                         scheduleUplink(fPort, payloadBuffer, payloadLength);
+                         
+                        // Reset and reschedule the long interval timer
+                        os_clearCallback(&doWorkJobLong);
+                        ostime_t startAtLong = timestamp + sec2osticks((int64_t)doWorkIntervalLongSeconds);
+                        os_setTimedCallback(&doWorkJobLong, startAtLong, doWorkCallbackLong);
                         
                     }
                     else
