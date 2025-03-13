@@ -896,11 +896,13 @@ void processWork(ostime_t doWorkJobTimeStamp)
                         payloadBuffer[11] = vbatx & 0xFF;         // LOW byte
 
                         scheduleUplink(fPort, payloadBuffer, payloadLength);
-                         
+                        
+#ifdef RESET_DO_WORK_INTERVAL_LONG 
                         // Reset and reschedule the long interval timer
                         os_clearCallback(&doWorkJobLong);
                         ostime_t startAtLong = timestamp + sec2osticks((int64_t)doWorkIntervalLongSeconds);
                         os_setTimedCallback(&doWorkJobLong, startAtLong, doWorkCallbackLong);
+#endif
                         
                     }
                     else
