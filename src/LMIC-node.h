@@ -62,9 +62,6 @@ void displayTxSymbol(bool visible);
     #define DO_WORK_INTERVAL_LONG_SECONDS 3600    // Default 60 minutes if not set
 #endif
 
-#ifndef RESET_DO_WORK_INTERVAL_LONG         // Reset DO_WORK_INTERVAL_LONG if Noraml Interval triggers a Location update OR have two completly independant Intervals.
-#endif
-
 #define TIMESTAMP_WIDTH 12 // Number of columns to display eventtime (zero-padded)
 #define MESSAGE_INDENT TIMESTAMP_WIDTH + 3
 
