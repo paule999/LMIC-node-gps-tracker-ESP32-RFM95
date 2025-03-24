@@ -827,7 +827,7 @@ void processWork(ostime_t doWorkJobTimeStamp)
             long vBat = ReadVBat(); // Read Battery Voltage
             uint16_t vbatx = (vBat / 10) - 200;
 
-            // Check if vBat is greater than or equal to 4.16V (4160mV)
+            // Check if vBat is greater than or equal to 4.2V (4200mV)
             if (vBat >= 4160) {
                 led2.on(); // Turn LED on
             } else {
