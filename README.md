@@ -21,6 +21,7 @@ As per that repository:
 Additional Features I have Added:
 - Add the number of Satellites added to Lora Payload
 - Battery Monitoring via ADC1_CHANNEL_3, ADC_ATTEN_DB_11 (GPIO 39) with vBatt added to the Lora Payload.
+- Check vBat each processWork and light led2 to indicate Fully Charged Battery (4.2v)
 - Dual Uplink Intervals: The device can send data at two different intervals (normal and long).Both Intervals are set via platfomio.ini
 - ESP32 Processor speed reduced (setCpuFrequencyMhz(20);) to improve battery life of tracker.
 
